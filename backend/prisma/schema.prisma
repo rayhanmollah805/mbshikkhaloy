@@ -1,0 +1,382 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MaterialType {
+  PDF
+  VIDEO
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  /// Teacher profile shown in the admin teacher list.
+  address      String?
+  designation  String?
+  subject      String?
+  photoUrl     String?
+  /// Authenticator (TOTP) 2-step login. Secret is stored encrypted; recovery codes are bcrypt hashes.
+  totpSecret   String?
+  totpEnabled  Boolean  @default(false)
+  recoveryCodes String[] @default([])
+  role         Role     @default(STUDENT)
+  permissions  String[] @default([])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  enrollments Enrollment[]
+  attempts    Attempt[]
+  teaching    BatchTeacher[]
+  tickets     SupportTicket[]
+  attendance  Attendance[]
+  submissions Submission[]
+  doubts      Doubt[]
+  doubtReplies DoubtReply[]
+  certificates Certificate[]
+  materialsDone MaterialDone[]
+}
+
+model Batch {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  isPaid      Boolean  @default(false)
+  fee         Int      @default(0)
+  isActive    Boolean  @default(true)
+  /// Marketing fields shown on the public course page.
+  subtitle    String?
+  highlights  String[] @default([])
+  duration    String?
+  /// Readable URL id (e.g. hsc-physics-2027); links also work with the raw id.
+  slug        String?  @unique
+  /// ONCE = one fee for the whole course; MONTHLY = `fee` is charged every 30 days of access.
+  billing     String   @default("ONCE")
+  createdAt   DateTime @default(now())
+
+  teachers    BatchTeacher[]
+  enrollments Enrollment[]
+  liveClasses LiveClass[]
+  routines    Routine[]
+  notices     Notice[]
+  materials   Material[]
+  exams       Exam[]
+  assignments Assignment[]
+  doubts      Doubt[]
+  certificates Certificate[]
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String
+  batchId   String
+  status    EnrollmentStatus @default(PENDING)
+  /// Monthly courses: access ends here (null = no expiry).
+  accessUntil DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+  batch     Batch            @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+
+  @@unique([userId, batchId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  enrollmentId String
+  amount       Int
+  method       String
+  trxId        String
+  status       PaymentStatus @default(PENDING)
+  couponCode   String?
+  discount     Int           @default(0)
+  createdAt    DateTime      @default(now())
+  enrollment   Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+}
+
+model LiveClass {
+  id       String   @id @default(cuid())
+  batchId  String
+  title    String
+  url      String
+  startsAt DateTime
+  /// Scheduled end; the server stops the stream and completes the broadcast when this passes.
+  endsAt   DateTime?
+  isLive   Boolean  @default(false)
+  /// MANUAL = teacher pasted a Meet/Zoom link; YOUTUBE = broadcast created through the YouTube API.
+  provider    String @default("MANUAL")
+  /// SCHEDULED | LIVE | ENDED
+  status      String @default("SCHEDULED")
+  videoId     String?
+  broadcastId String?
+  streamId    String?
+  /// Secrets: only the ingest gateway reads these; never returned by the API.
+  ingestUrl   String?
+  streamKey   String?
+  batch    Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+}
+
+model Routine {
+  id        String @id @default(cuid())
+  batchId   String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  subject   String
+  batch     Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+model Notice {
+  id        String   @id @default(cuid())
+  batchId   String?
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+  batch     Batch?   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+}
+
+model Material {
+  id        String       @id @default(cuid())
+  batchId   String
+  type      MaterialType
+  title     String
+  url       String
+  createdAt DateTime     @default(now())
+  batch     Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  done      MaterialDone[]
+}
+
+model Exam {
+  id          String     @id @default(cuid())
+  batchId     String
+  title       String
+  durationMin Int
+  published   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  batch       Batch      @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  attempts    Attempt[]
+}
+
+model Question {
+  id           String   @id @default(cuid())
+  examId       String
+  text         String
+  options      String[]
+  correctIndex Int
+  exam         Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+
+model Attempt {
+  id          String   @id @default(cuid())
+  examId      String
+  userId      String
+  answers     Json
+  score       Int
+  total       Int
+  submittedAt DateTime @default(now())
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([examId, userId])
+}
+
+/// A teacher is only allowed to touch batches they are assigned to here.
+model BatchTeacher {
+  batchId String
+  userId  String
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([batchId, userId])
+}
+
+/// Admin-editable site settings (payment numbers, support contact).
+model Setting {
+  key   String @id
+  value String
+}
+
+enum TicketStatus {
+  OPEN
+  CLOSED
+}
+
+enum MessageSender {
+  USER
+  STAFF
+}
+
+/// Human support chat. Guests prove ownership with `accessToken` (kept in their browser);
+/// signed-in users are matched by `userId`.
+model SupportTicket {
+  id          String           @id @default(cuid())
+  userId      String?
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String
+  contact     String?
+  accessToken String
+  status      TicketStatus     @default(OPEN)
+  staffUnread Boolean          @default(true)
+  userUnread  Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  messages    SupportMessage[]
+}
+
+model SupportMessage {
+  id         String        @id @default(cuid())
+  ticketId   String
+  sender     MessageSender
+  authorName String?
+  body       String
+  createdAt  DateTime      @default(now())
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+/// Seconds a student spent watching a live class (heartbeat every 30s).
+model Attendance {
+  id          String    @id @default(cuid())
+  liveClassId String
+  userId      String
+  seconds     Int       @default(0)
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  liveClass   LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([liveClassId, userId])
+}
+
+model Assignment {
+  id          String       @id @default(cuid())
+  batchId     String
+  title       String
+  description String?
+  fileUrl     String?
+  dueAt       DateTime?
+  maxMarks    Int          @default(100)
+  createdAt   DateTime     @default(now())
+  batch       Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+}
+
+model Submission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  userId       String
+  fileUrl      String?
+  note         String?
+  submittedAt  DateTime   @default(now())
+  marks        Int?
+  feedback     String?
+  gradedAt     DateTime?
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, userId])
+}
+
+model Doubt {
+  id        String        @id @default(cuid())
+  batchId   String
+  userId    String
+  title     String
+  body      String
+  /// Optional pointer to the class/video the question is about.
+  ref       String?
+  resolved  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  batch     Batch         @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies   DoubtReply[]
+}
+
+model DoubtReply {
+  id        String   @id @default(cuid())
+  doubtId   String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+  doubt     Doubt    @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// A student ticked a note/video as finished.
+model MaterialDone {
+  userId     String
+  materialId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([userId, materialId])
+}
+
+model Certificate {
+  id       String   @id @default(cuid())
+  code     String   @unique
+  userId   String
+  batchId  String
+  issuedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch    Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, batchId])
+}
+
+model Coupon {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  /// Either a percentage or a fixed taka amount off.
+  percent   Int       @default(0)
+  amount    Int       @default(0)
+  maxUses   Int?
+  used      Int       @default(0)
+  expiresAt DateTime?
+  /// null = valid for every course.
+  batchId   String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorName String
+  action    String
+  target    String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

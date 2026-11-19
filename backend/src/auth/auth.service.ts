@@ -37,6 +37,7 @@ export class AuthService {
     email: string;
     name: string;
     phone: string | null;
+    photoUrl?: string | null;
     role: string;
     permissions: string[];
   }) {
@@ -45,6 +46,7 @@ export class AuthService {
       email: u.email,
       name: u.name,
       phone: u.phone,
+      photoUrl: u.photoUrl ?? null,
       role: u.role,
       permissions: u.permissions,
     };

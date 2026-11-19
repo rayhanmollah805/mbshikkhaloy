@@ -10,6 +10,7 @@ export type User = {
   id: string;
   name: string;
   email: string;
+  photoUrl?: string | null;
   role: Role;
   permissions: string[];
 };

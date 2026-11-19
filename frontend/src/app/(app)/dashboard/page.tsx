@@ -7,6 +7,7 @@ import { CourseCard, type Course } from "@/components/course-card";
 import { Icon } from "@/components/icons";
 import { Badge, Card, EmptyState, ErrorMsg, PageHeader, Skeleton, StatCard, bn, fmtDate } from "@/components/ui";
 import { api } from "@/lib/api";
+import { StudentDashboard } from "@/components/student-dashboard";
 import { can, useRequireUser } from "@/lib/auth";
 
 type Notice = { id: string; title: string; body: string; createdAt: string; batch: { title: string } | null };
@@ -27,6 +28,7 @@ export default function Dashboard() {
       router.replace("/admin");
       return;
     }
+    if (user.role === "STUDENT") return; // the student dashboard loads its own data
     (async () => {
       const [all, n] = await Promise.all([api<Course[]>("/batches"), api<Notice[]>("/notices")]);
       const mine = user.role === "STUDENT" ? all.filter((c) => c.enrollment?.status === "ACTIVE") : all;
@@ -45,7 +47,8 @@ export default function Dashboard() {
   }, [user, router]);
 
   if (!user || user.role === "ADMIN") return null;
-  const student = user.role === "STUDENT";
+  if (user.role === "STUDENT") return <StudentDashboard user={user} />;
+  const student: boolean = false; // students render <StudentDashboard /> above
   const first = user.name.split(" ")[0];
 
   return (

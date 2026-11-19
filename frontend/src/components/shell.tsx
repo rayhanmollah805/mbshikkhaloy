@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, fileUrl } from "@/lib/api";
 import { useRequireUser, type Role } from "@/lib/auth";
 import { useAuth } from "@/lib/auth";
 import { ChatWidget } from "./chat-widget";
@@ -11,6 +11,8 @@ import { Icon, type IconName } from "./icons";
 import { LogoMark } from "./logo";
 import { Avatar, Badge, Skeleton } from "./ui";
 import { SITE_NAME } from "@/lib/brand";
+import { ProfileModal } from "./profile-modal";
+import { useDarkMode } from "./theme";
 
 type NavItem = { href: string; label: string; icon: IconName };
 
@@ -38,6 +40,8 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/dashboard", label: "ড্যাশবোর্ড", icon: "home" },
     { href: "/courses", label: "আমার কোর্স", icon: "book" },
     { href: "/browse", label: "কোর্স ভর্তি", icon: "plus" },
+    { href: "/community", label: "কমিউনিটি", icon: "chat" },
+    { href: "/reports", label: "রিপোর্ট", icon: "chart" },
     { href: "/notices", label: "নোটিশ", icon: "bell" },
   ],
 };
@@ -54,6 +58,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [supportCount, setSupportCount] = useState(0);
+  const { dark, toggle } = useDarkMode();
+  const [profile, setProfile] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   const isAdmin = user?.role === "ADMIN";
   // Unread support conversations -> badge on the sidebar item (admins only).
@@ -71,6 +78,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       clearInterval(h);
     };
   }, [isAdmin, pathname]);
+
+  // Bell: notices newer than the last time the notice page was opened.
+  const uid = user?.id;
+  useEffect(() => {
+    if (!uid) return;
+    const KEY = "notices_seen";
+    if (pathname === "/notices") {
+      try {
+        localStorage.setItem(KEY, String(Date.now()));
+      } catch {
+        /* storage blocked */
+      }
+      setUnread(0); // eslint-disable-line react-hooks/set-state-in-effect
+      return;
+    }
+    let stop = false;
+    const tick = () =>
+      api<{ createdAt: string }[]>("/notices")
+        .then((rows) => {
+          let seen = 0;
+          try {
+            seen = Number(localStorage.getItem(KEY)) || 0;
+          } catch {
+            /* storage blocked */
+          }
+          if (!stop) setUnread(rows.filter((n) => new Date(n.createdAt).getTime() > seen).length);
+        })
+        .catch(() => undefined);
+    tick();
+    const h = setInterval(tick, 60000);
+    return () => {
+      stop = true;
+      clearInterval(h);
+    };
+  }, [uid, pathname]);
 
   if (!user) {
     return (
@@ -161,11 +203,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-faint">{user.email}</p>
             </div>
             <Badge tone="brand">{ROLE_LABEL[user.role]}</Badge>
-            <Avatar name={user.name} />
+            <button onClick={toggle} aria-pressed={dark} aria-label={dark ? "লাইট মোড" : "ডার্ক মোড"} className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:bg-canvas">
+              <Icon name={dark ? "sun" : "moon"} className="size-4" />
+              <span className="hidden sm:inline">{dark ? "লাইট মোড" : "ডার্ক মোড"}</span>
+            </button>
+            <Link href="/notices" aria-label={unread ? `${unread}টি নতুন নোটিশ` : "নোটিশ"} className="relative rounded-full p-2 text-ink hover:bg-canvas">
+              <Icon name="bell" />
+              {unread > 0 && <span className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] font-bold leading-4 text-white">{unread > 9 ? "9+" : unread}</span>}
+            </Link>
+            {user.role === "STUDENT" ? (
+              <button onClick={() => setProfile(true)} aria-label="প্রোফাইল সম্পাদনা" className="rounded-full">
+                <Avatar name={user.name} src={user.photoUrl ? fileUrl(user.photoUrl) : null} />
+              </button>
+            ) : (
+              <Avatar name={user.name} src={user.photoUrl ? fileUrl(user.photoUrl) : null} />
+            )}
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>
+      {user.role === "STUDENT" && profile && <ProfileModal user={user} open onClose={() => setProfile(false)} />}
       <ChatWidget />
     </div>
   );

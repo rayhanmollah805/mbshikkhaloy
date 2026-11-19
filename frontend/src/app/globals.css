@@ -130,3 +130,53 @@ button:disabled {
     overflow-x: auto;
   }
 }
+
+/* Dark mode: only switched on while the signed-in app is open (see components/theme.tsx). */
+html.dark {
+  color-scheme: dark;
+  --color-brand: #0d9488;
+  --color-brand-dark: #5eead4;
+  --color-brand-soft: #0f2f2e;
+  --color-brand-line: #1f5f5a;
+  --color-ink: #e6f1f2;
+  --color-sub: #a8b8bd;
+  --color-faint: #8a9ca5;
+  --color-line: #25393e;
+  --color-canvas: #0a1a1d;
+  --color-surface: #11262a;
+  --color-side: #071417;
+  --color-side-hover: #0f2429;
+  --color-accent-soft: #2b2110;
+  --color-danger: #f87171;
+  --color-danger-soft: #331618;
+  --color-ok: #4ade80;
+  --color-ok-soft: #10281a;
+  --color-warn: #fbbf24;
+  --color-warn-soft: #2b2110;
+}
+html.dark .skeleton {
+  background: linear-gradient(90deg, #17302f 25%, #1c3a3c 50%, #17302f 75%);
+  background-size: 200% 100%;
+}
+/* Printed pages (certificate, report card) are always light, whatever the theme. */
+.force-light {
+  color-scheme: light;
+  --color-brand: #0f766e;
+  --color-brand-dark: #115e59;
+  --color-brand-soft: #f0fdfa;
+  --color-brand-line: #99e6dc;
+  --color-ink: #0f2a2e;
+  --color-sub: #475569;
+  --color-faint: #64748b;
+  --color-line: #dde5e8;
+  --color-canvas: #f4f7f8;
+  --color-surface: #ffffff;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fef2f2;
+  --color-ok: #15803d;
+  --color-ok-soft: #f0fdf4;
+  --color-warn: #b45309;
+  --color-warn-soft: #fffbeb;
+  background: #fff;
+  color: var(--color-ink);
+}

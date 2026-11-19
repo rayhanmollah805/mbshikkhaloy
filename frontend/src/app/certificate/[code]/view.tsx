@@ -32,7 +32,7 @@ export default function Certificate() {
   if (!c) return <main className="grid min-h-screen place-items-center bg-canvas text-sub">লোড হচ্ছে…</main>;
   const date = new Date(c.issuedAt).toLocaleDateString("bn-BD", { dateStyle: "long" });
   return (
-    <main className="min-h-screen bg-canvas px-4 py-8 print:bg-white print:p-0">
+    <main className="force-light min-h-screen bg-canvas px-4 py-8 print:bg-white print:p-0">
       <style>{`@page { size: A4 landscape; margin: 0 } @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact } }`}</style>
       <div className="mx-auto mb-5 flex max-w-4xl flex-wrap items-center justify-between gap-3 print:hidden">
         <Link href="/dashboard" className="text-sm font-medium text-brand hover:underline">← ড্যাশবোর্ড</Link>

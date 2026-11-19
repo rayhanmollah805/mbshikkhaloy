@@ -196,7 +196,7 @@ export function ChatWidget() {
         <button
           onClick={() => setOpen(true)}
           aria-label="চ্যাট সহায়ক খুলুন"
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-brand px-5 py-3.5 text-white shadow-lg transition-colors hover:bg-brand-dark sm:bottom-6 sm:right-6"
+          className="print:hidden fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-brand px-5 py-3.5 text-white shadow-lg transition-colors hover:bg-brand-dark sm:bottom-6 sm:right-6"
         >
           <Icon name="chat" className="size-6" />
           <span className="hidden text-sm font-semibold sm:inline">{aiAvailable === false ? "সাপোর্ট" : "সহায়ক"}</span>
@@ -209,7 +209,7 @@ export function ChatWidget() {
           role="dialog"
           aria-label="চ্যাট সহায়ক"
           onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-          className="fade-in fixed inset-x-2 bottom-2 z-50 flex h-[75vh] max-h-[40rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:h-[34rem] sm:w-[24rem]"
+          className="print:hidden fade-in fixed inset-x-2 bottom-2 z-50 flex h-[75vh] max-h-[40rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:h-[34rem] sm:w-[24rem]"
         >
           <header className="bg-brand text-white">
             <div className="flex items-center justify-between px-4 py-3">

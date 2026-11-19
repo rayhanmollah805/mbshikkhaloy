@@ -18,6 +18,7 @@ import { LiveController } from './live/live.controller.js';
 import { YoutubeService } from './live/youtube.service.js';
 import { AuditService } from './audit/audit.service.js';
 import { CertificatePublicController, LearningController } from './features/learning.controller.js';
+import { StudentController } from './features/student.controller.js';
 import { MoneyController } from './features/money.controller.js';
 import { PublicController } from './public/public.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -38,6 +39,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     LearningController,
     CertificatePublicController,
     MoneyController,
+    StudentController,
   ],
   providers: [AppService, BatchesService, ChatService, SupportService, YoutubeService, IngestService, LiveService, AuditService],
 })
